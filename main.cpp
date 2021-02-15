@@ -141,7 +141,7 @@ struct DemoApp : public BaseApp
                                      glm::vec3(0,-1,0));                                              // up
         }
 
-        // Order matters. We use TRSA.
+        // Order matters. We use TRSC (Translate, Rotate, Scale, Center)
         modelMatrix  = glm::translate(glm::identity<glm::mat4>(), mikePosition);
         modelMatrix *= glm::yawPitchRoll(glm::radians(mikeRotation.y), glm::radians(mikeRotation.x), glm::radians(mikeRotation.z));
         modelMatrix  = glm::scale(modelMatrix, mikeScale);

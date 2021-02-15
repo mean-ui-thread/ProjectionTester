@@ -16,7 +16,7 @@ HunterGate(
     SHA1 "0dd1ee8723d54a15822519c17a877c1f281fce39"
 )
 
-project(ProjectionTester LANGUAGES CXX)
+project(ProjectionTester)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

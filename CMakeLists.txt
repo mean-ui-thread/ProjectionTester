@@ -22,10 +22,10 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 hunter_add_package(SDL2)
-find_package(SDL_image CONFIG REQUIRED)
+find_package(SDL2 CONFIG REQUIRED)
 
 hunter_add_package(SDL_image)
-find_package(SDL2 CONFIG REQUIRED)
+find_package(SDL_image CONFIG REQUIRED)
 
 hunter_add_package(glew)
 find_package(glew CONFIG REQUIRED)

@@ -10,6 +10,8 @@ struct Texture
 {
     GLuint handle = 0;
     std::string filePath;
+    int width = 0;
+    int height = 0;
 
     Texture(const std::string &filePath) : filePath(filePath)
     {
@@ -38,6 +40,9 @@ struct Texture
             SDL_FreeSurface(surface);
             return -1;
         }
+
+        width = surfaceRGBA->w;
+        height = surfaceRGBA->h;
 
         bind(0);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surfaceRGBA->w, surfaceRGBA->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, surfaceRGBA->pixels);

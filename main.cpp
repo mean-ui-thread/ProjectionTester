@@ -23,6 +23,7 @@ struct DemoApp : public BaseApp
     VertexBuffer *mikeVBO = NULL;
     bool useOrtho = true;
     float fieldOfView = 45.0f;
+    glm::vec2 vanishPoint = glm::vec3(0.0f);
     glm::vec3 mikePosition = glm::vec3(0.0f);
     glm::vec3 mikeRotation = glm::vec3(0.0f);
     glm::vec3 mikeScale = glm::vec3(1.0f);
@@ -99,6 +100,10 @@ struct DemoApp : public BaseApp
         mikeVBO = new VertexBuffer();
         mikeVBO->upload(mikeVertices, VertexBuffer::Static);
 
+        // Vanish point initially the center of the screen
+        vanishPoint.x = displayWidth * 0.5f;
+        vanishPoint.y = displayHeight * 0.5f;
+
         return true;
     }
 
@@ -157,6 +162,15 @@ struct DemoApp : public BaseApp
         glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)backgroundVertices.size());
 
         // Draw mike
+        // set vanishing point
+        if (!useOrtho) {
+            float vpx = displayWidth - vanishPoint.x;
+            float vpy = vanishPoint.y;
+            projectionMatrix[2][0] = (2.0f * vpx /  displayWidth) - 1.0f;
+            projectionMatrix[2][1] = (2.0f * vpy / displayHeight) - 1.0f;
+            projectionMatrix[3][0] = (vpx -  (displayWidth * 0.5f)) * projectionMatrix[0][0];
+            projectionMatrix[3][1] = (vpy - (displayHeight * 0.5f)) * projectionMatrix[1][1];
+        }
         defaultProgram->setUniform(u_MVP, projectionMatrix * viewMatrix * modelMatrix); // No Model transforms for the background.
         mikeVBO->bind(defaultProgram);
         mikeTex->bind();
@@ -169,9 +183,18 @@ struct DemoApp : public BaseApp
 
         ImGui::NewFrame();
 
+        ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(displayWidth, displayHeight), ImGuiCond_Always);
+        ImGui::Begin("VanishPointGizmo", NULL, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs);
+        ImGui::GetWindowDrawList()->AddLine(ImVec2(vanishPoint.x, vanishPoint.y-16), ImVec2(vanishPoint.x, vanishPoint.y+16), IM_COL32(255, 0, 0, 255), 3.0f);
+        ImGui::GetWindowDrawList()->AddLine(ImVec2(vanishPoint.x-16, vanishPoint.y), ImVec2(vanishPoint.x+16, vanishPoint.y), IM_COL32(255, 0, 0, 255), 3.0f);
+        ImGui::End();
+
         ImGui::Begin("Control Panel");
         ImGui::Checkbox("Use Orthographic Projection", &useOrtho);
         ImGui::SliderFloat("Field of View", &fieldOfView, 0, 180);
+        ImGui::SliderFloat("Vanish Point X", &vanishPoint.x, 0, displayWidth);
+        ImGui::SliderFloat("Vanish Point Y", &vanishPoint.y, 0, displayHeight);
 
         if (ImGui::TreeNode("Projection Matrix Viewer"))
         {

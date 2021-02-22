@@ -46,7 +46,6 @@ struct DemoApp : public BaseApp
     };
 
     glm::mat4 projectionMatrix;
-    glm::mat4 viewMatrix;
     glm::mat4 modelMatrix;
 
     GLint u_MVP = 0;
@@ -130,20 +129,16 @@ struct DemoApp : public BaseApp
         if (useOrtho)
         {
             projectionMatrix = glm::ortho(0.0f, (float)displayWidth, (float)displayHeight, 0.0f, -8000.0f, 8000.0f);
-            viewMatrix = glm::lookAt(glm::vec3(0,0,1),  // eye
-                                     glm::vec3(0,0,0),  // center
-                                     glm::vec3(0,1,0)); // up
         }
         else
         {
             float fieldOfViewRad = glm::radians(fieldOfView);
-            float cameraDistance = ((float)displayHeight/2.0f) / tan(fieldOfViewRad/2.0f); //724.26407f;
+            float cameraDistance = ((float)displayHeight/2.0f) / tan(fieldOfViewRad/2.0f);
             float aspectRatio = (float)displayWidth / (float)displayHeight;
 
-            projectionMatrix = glm::perspective(fieldOfViewRad, aspectRatio, 0000.0f, 8000.0f);
-            viewMatrix = glm::lookAt(glm::vec3(displayWidth*0.5f,displayHeight*0.5f,-cameraDistance), // eye
-                                     glm::vec3(displayWidth*0.5f,displayHeight*0.5,0),                // center
-                                     glm::vec3(0,-1,0));                                              // up
+            projectionMatrix = glm::perspectiveLH(fieldOfViewRad, aspectRatio, 0000.0f, 8000.0f);
+            projectionMatrix = glm::scale(projectionMatrix, glm::vec3(1,-1,1));
+            projectionMatrix = glm::translate(projectionMatrix, glm::vec3(-displayWidth*0.5f, -displayHeight*0.5f, cameraDistance));
         }
 
         // Order matters. We use TRSC (Translate, Rotate, Scale, Center)
@@ -156,7 +151,7 @@ struct DemoApp : public BaseApp
         defaultProgram->setUniform(u_texture0, 0);
 
         // Draw the background
-        defaultProgram->setUniform(u_MVP, projectionMatrix * viewMatrix); // No Model transforms for the background.
+        defaultProgram->setUniform(u_MVP, projectionMatrix); // No Model transforms for the background.
         backgroundVBO->bind(defaultProgram);
         backgroundTex->bind();
         glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)backgroundVertices.size());
@@ -164,14 +159,12 @@ struct DemoApp : public BaseApp
         // Draw mike
         // set vanishing point
         if (!useOrtho) {
-            float vpx = displayWidth - vanishPoint.x;
-            float vpy = vanishPoint.y;
+            float vpx = vanishPoint.x;
+            float vpy = displayHeight - vanishPoint.y;
             projectionMatrix[2][0] = (2.0f * vpx /  displayWidth) - 1.0f;
             projectionMatrix[2][1] = (2.0f * vpy / displayHeight) - 1.0f;
-            projectionMatrix[3][0] = (vpx -  (displayWidth * 0.5f)) * projectionMatrix[0][0];
-            projectionMatrix[3][1] = (vpy - (displayHeight * 0.5f)) * projectionMatrix[1][1];
         }
-        defaultProgram->setUniform(u_MVP, projectionMatrix * viewMatrix * modelMatrix); // No Model transforms for the background.
+        defaultProgram->setUniform(u_MVP, projectionMatrix * modelMatrix);
         mikeVBO->bind(defaultProgram);
         mikeTex->bind();
         glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)mikeVertices.size());
@@ -207,24 +200,6 @@ struct DemoApp : public BaseApp
                     {
                         ImGui::TableSetColumnIndex(column);
                         snprintf(buf, sizeof(buf), "%f", projectionMatrix[row][column]);
-                        ImGui::TextUnformatted(buf);
-                    }
-                }
-                ImGui::EndTable();
-            }
-            ImGui::TreePop();
-        }
-        if (ImGui::TreeNode("View Matrix Viewer"))
-        {
-            if (ImGui::BeginTable("View", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
-            {
-                for (int row = 0; row < 4; row++)
-                {
-                    ImGui::TableNextRow();
-                    for (int column = 0; column < 4; column++)
-                    {
-                        ImGui::TableSetColumnIndex(column);
-                        snprintf(buf, sizeof(buf), "%f", viewMatrix[row][column]);
                         ImGui::TextUnformatted(buf);
                     }
                 }

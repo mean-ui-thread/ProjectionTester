@@ -21,7 +21,8 @@ struct DemoApp : public BaseApp
     VertexBuffer *backgroundVBO = NULL;
     Texture *mikeTex = NULL;
     VertexBuffer *mikeVBO = NULL;
-    bool useOrtho = true;
+    bool useOrtho = false;
+    bool useFrontToBack = true;
     float fieldOfView = 45.0f;
     glm::vec2 vanishPoint = glm::vec3(0.0f);
     glm::vec3 mikePosition = glm::vec3(0.0f);
@@ -103,6 +104,17 @@ struct DemoApp : public BaseApp
         vanishPoint.x = displayWidth * 0.5f;
         vanishPoint.y = displayHeight * 0.5f;
 
+        // center initially at the center of mike
+        mikeCenterPoint.x = 256.0f;
+        mikeCenterPoint.y = 256.0f;
+
+        // mike initially at the top left corer of the screen
+        mikePosition.x = 256.0f;
+        mikePosition.y = 256.0f;
+
+        glDepthFunc(GL_LESS);
+        glDepthMask(GL_TRUE);
+
         return true;
     }
 
@@ -124,38 +136,8 @@ struct DemoApp : public BaseApp
         mikeVBO = NULL;
     }
 
-    virtual void render() override
+    void drawMike()
     {
-        if (useOrtho)
-        {
-            projectionMatrix = glm::ortho(0.0f, (float)displayWidth, (float)displayHeight, 0.0f, -8000.0f, 8000.0f);
-        }
-        else
-        {
-            float fieldOfViewRad = glm::radians(fieldOfView);
-            float cameraDistance = ((float)displayHeight/2.0f) / tan(fieldOfViewRad/2.0f);
-            float aspectRatio = (float)displayWidth / (float)displayHeight;
-
-            projectionMatrix = glm::perspectiveLH(fieldOfViewRad, aspectRatio, 0000.0f, 8000.0f);
-            projectionMatrix = glm::scale(projectionMatrix, glm::vec3(1,-1,1));
-            projectionMatrix = glm::translate(projectionMatrix, glm::vec3(-displayWidth*0.5f, -displayHeight*0.5f, cameraDistance));
-        }
-
-        // Order matters. We use TRSC (Translate, Rotate, Scale, Center)
-        modelMatrix  = glm::translate(glm::identity<glm::mat4>(), mikePosition);
-        modelMatrix *= glm::yawPitchRoll(glm::radians(mikeRotation.y), glm::radians(mikeRotation.x), glm::radians(mikeRotation.z));
-        modelMatrix  = glm::scale(modelMatrix, mikeScale);
-        modelMatrix  = glm::translate(modelMatrix, -mikeCenterPoint);
-
-        defaultProgram->bind();
-        defaultProgram->setUniform(u_texture0, 0);
-
-        // Draw the background
-        defaultProgram->setUniform(u_MVP, projectionMatrix); // No Model transforms for the background.
-        backgroundVBO->bind(defaultProgram);
-        backgroundTex->bind();
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)backgroundVertices.size());
-
         // Draw mike
         // set vanishing point
         if (!useOrtho) {
@@ -168,6 +150,58 @@ struct DemoApp : public BaseApp
         mikeVBO->bind(defaultProgram);
         mikeTex->bind();
         glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)mikeVertices.size());
+    }
+
+    void drawBackground()
+    {
+        // Draw the background
+        defaultProgram->setUniform(u_MVP, projectionMatrix); // No Model transforms for the background.
+        backgroundVBO->bind(defaultProgram);
+        backgroundTex->bind();
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)backgroundVertices.size());
+    }
+
+
+    virtual void render() override
+    {
+        if (useOrtho)
+        {
+            projectionMatrix = glm::ortho(0.0f, (float)displayWidth, (float)displayHeight, 0.0f, -8000.0f, 8000.0f);
+        }
+        else
+        {
+            float fieldOfViewRad = glm::radians(fieldOfView);
+            float cameraDistance = ((float)displayHeight/2.0f) / tan(fieldOfViewRad/2.0f);
+            float aspectRatio = (float)displayWidth / (float)displayHeight;
+
+            projectionMatrix = glm::perspective(fieldOfViewRad, aspectRatio, 0.1f, cameraDistance+512.0f);
+            projectionMatrix = glm::rotate(projectionMatrix, glm::radians(180.0f), glm::vec3(1, 0, 0));
+            projectionMatrix = glm::translate(projectionMatrix, glm::vec3(-displayWidth*0.5f, -displayHeight*0.5f, cameraDistance));
+        }
+
+        // Order matters. We use TRSC (Translate, Rotate, Scale, Center)
+        modelMatrix  = glm::translate(glm::identity<glm::mat4>(), mikePosition);
+        modelMatrix *= glm::yawPitchRoll(glm::radians(mikeRotation.y), glm::radians(mikeRotation.x), glm::radians(mikeRotation.z));
+        modelMatrix  = glm::scale(modelMatrix, mikeScale);
+        modelMatrix  = glm::translate(modelMatrix, -mikeCenterPoint);
+
+        defaultProgram->bind();
+        defaultProgram->setUniform(u_texture0, 0);
+
+        if (useFrontToBack) {
+            glEnable(GL_DEPTH_TEST);
+            projectionMatrix[2][2] = 0.0f;
+
+            projectionMatrix[3][2] = 0.0f;
+            drawMike();
+
+            projectionMatrix[3][2] = 0.1f;
+            drawBackground();
+        } else {
+            glDisable(GL_DEPTH_TEST);
+            drawBackground();
+            drawMike();
+        }
     }
 
     virtual void renderUI() override
@@ -185,6 +219,7 @@ struct DemoApp : public BaseApp
 
         ImGui::Begin("Control Panel");
         ImGui::Checkbox("Use Orthographic Projection", &useOrtho);
+        ImGui::Checkbox("Front to Back", &useFrontToBack);
         ImGui::SliderFloat("Field of View", &fieldOfView, 0, 180);
         ImGui::SliderFloat("Vanish Point X", &vanishPoint.x, 0, displayWidth);
         ImGui::SliderFloat("Vanish Point Y", &vanishPoint.y, 0, displayHeight);

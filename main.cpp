@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtx/euler_angles.hpp>
+#include <glm/gtx/transform2.hpp>
 
 #include "AttributeInfo.h"
 #include "ShaderProgram.h"
@@ -10,280 +11,313 @@
 #include "VertexBuffer.h"
 
 struct DemoVertex {
-    glm::vec3 position;
-    glm::vec2 texCoord;
+	glm::vec2 position;
+	glm::u8vec4 color;
 };
+
 
 struct DemoApp : public BaseApp
 {
-    ShaderProgram *defaultProgram = NULL;
-    Texture *backgroundTex = NULL;
-    VertexBuffer *backgroundVBO = NULL;
-    Texture *mikeTex = NULL;
-    VertexBuffer *mikeVBO = NULL;
-    bool useOrtho = false;
-    bool useFrontToBack = true;
-    float fieldOfView = 45.0f;
-    glm::vec2 vanishPoint = glm::vec3(0.0f);
-    glm::vec3 mikePosition = glm::vec3(0.0f);
-    glm::vec3 mikeRotation = glm::vec3(0.0f);
-    glm::vec3 mikeScale = glm::vec3(1.0f);
-    glm::vec3 mikeCenterPoint = glm::vec3(0.0f);
+	ShaderProgram *fillProgram = NULL;
+	VertexBuffer *backgroundVBO = NULL;
+	VertexBuffer *redRectVBO = NULL;
+	VertexBuffer *greenRectVBO = NULL;
+	VertexBuffer *blueRectVBO = NULL;
+	bool useOrtho = false;
+	bool useFrontToBack = true;
+	float fieldOfView = 55.0f;
+	glm::vec3 greenRotation = glm::vec3(45.0f);
+	glm::vec2 vanishPoint = glm::vec2(256.0f+64.0f, 128.0f+64.0f);
 
-    std::vector<DemoVertex> backgroundVertices = {
-        //{   X       Y       Z  }  { S     T  }
-        { {  0.0f,   0.0f,   0.0f}, {0.0f, 0.0f} },
-        {   {0.0f, 600.0f,   0.0f}, {0.0f, 1.0f} },
-        { {800.0f,   0.0f,   0.0f}, {1.0f, 0.0f} },
-        { {800.0f, 600.0f,   0.0f}, {1.0f, 1.0f} },
-    };
+	std::vector<DemoVertex> backgroundVertices = {
+		//{   X       Y   }  { R     G     B     A  }
+		{ {  0.0f,   0.0f}, {0xFF, 0xBF, 0x80, 0xFF} },
+		{ {  0.0f, 480.0f}, {0xFF, 0xBF, 0x80, 0xFF} },
+		{ {800.0f,   0.0f}, {0xFF, 0xBF, 0x80, 0xFF} },
+		{ {800.0f, 480.0f}, {0xFF, 0xBF, 0x80, 0xFF} },
+	};
 
-    std::vector<DemoVertex> mikeVertices = {
-        //{   X       Y       Z  }  { S     T  }
-        { {  0.0f,   0.0f,   0.0f}, {0.0f, 0.0f} },
-        {   {0.0f, 512.0f,   0.0f}, {0.0f, 1.0f} },
-        { {512.0f,   0.0f,   0.0f}, {1.0f, 0.0f} },
-        { {512.0f, 512.0f,   0.0f}, {1.0f, 1.0f} },
-    };
+	std::vector<DemoVertex> redRectVertices = {
+		//{   X       Y   }  { R     G     B     A  }
+		{ {   0.0f,   0.0f}, {0xFF, 0x00, 0x00, 0xFF} },
+		{ {   0.0f, 128.0f}, {0xFF, 0x00, 0x00, 0xFF} },
+		{ { 128.0f,   0.0f}, {0xFF, 0x00, 0x00, 0xFF} },
+		{ { 128.0f, 128.0f}, {0xFF, 0x00, 0x00, 0xFF} },
+	};
 
-    glm::mat4 projectionMatrix;
-    glm::mat4 modelMatrix;
+	std::vector<DemoVertex> greenRectVertices = {
+		//{   X       Y   }  { R     G     B     A  }
+		{ {   0.0f,   0.0f}, {0x00, 0xFF, 0x00, 0xFF} },
+		{ {   0.0f, 128.0f}, {0x00, 0xFF, 0x00, 0xFF} },
+		{ { 128.0f,   0.0f}, {0x00, 0xFF, 0x00, 0xFF} },
+		{ { 128.0f, 128.0f}, {0x00, 0xFF, 0x00, 0xFF} },
+	};
 
-    GLint u_MVP = 0;
-    GLint u_texture0 = 0;
+	std::vector<DemoVertex> blueRectVertices = {
+		//{   X       Y   }  { R     G     B     A  }
+		{ {   0.0f,   0.0f}, {0x00, 0x00, 0xFF, 0xFF} },
+		{ {   0.0f, 128.0f}, {0x00, 0x00, 0xFF, 0xFF} },
+		{ { 128.0f,   0.0f}, {0x00, 0x00, 0xFF, 0xFF} },
+		{ { 128.0f, 128.0f}, {0x00, 0x00, 0xFF, 0xFF} },
+	};
 
-    virtual bool init() override
-    {
-        Shader defaultVert("default.vert");
-        if (defaultVert.compile() != 0)
-        {
-            return false;
-        }
+	glm::mat4 projectionMatrix;
+	glm::mat4 modelMatrix;
 
-        Shader defaultFrag("default.frag");
-        if (defaultFrag.compile() != 0)
-        {
-            return false;
-        }
+	GLint u_MVP = 0;
 
-        std::vector<AttributeInfo> defaultAttributes = {
-            {"a_position", AttributeInfo::Float, 3},
-            {"a_texCoord0", AttributeInfo::Float, 2},
-        };
+	virtual bool init() override
+	{
+		Shader fillVert("fill.vert");
+		if (fillVert.compile() != 0)
+		{
+			return false;
+		}
 
-        defaultProgram = new ShaderProgram(defaultAttributes);
-        defaultProgram->attach(&defaultVert);
-        defaultProgram->attach(&defaultFrag);
-        if (defaultProgram->link() != 0)
-        {
-            return false;
-        }
+		Shader fillFrag("fill.frag");
+		if (fillFrag.compile() != 0)
+		{
+			return false;
+		}
 
-        u_MVP      = defaultProgram->getUniformLocation("u_MVP");
-        u_texture0 = defaultProgram->getUniformLocation("u_texture0");
+		std::vector<AttributeInfo> fillAttributes = {
+			{"a_position", AttributeInfo::Float, 2, false},
+			{"a_color", AttributeInfo::UnsignedByte, 4, true},
+		};
 
-        backgroundTex = new Texture("background.jpg");
-        if (backgroundTex->decode() != 0)
-        {
-            return false;
-        }
+		fillProgram = new ShaderProgram(fillAttributes);
+		fillProgram->attach(&fillVert);
+		fillProgram->attach(&fillFrag);
+		if (fillProgram->link() != 0)
+		{
+			return false;
+		}
 
-        backgroundVBO = new VertexBuffer();
-        backgroundVBO->upload(backgroundVertices, VertexBuffer::Static);
+		u_MVP      = fillProgram->getUniformLocation("u_MVP");
 
-        mikeTex = new Texture("mike.png");
-        if (mikeTex->decode() != 0)
-        {
-            return false;
-        }
+		backgroundVBO = new VertexBuffer();
+		backgroundVBO->upload(backgroundVertices, VertexBuffer::Static);
 
-        mikeVBO = new VertexBuffer();
-        mikeVBO->upload(mikeVertices, VertexBuffer::Static);
+		redRectVBO = new VertexBuffer();
+		redRectVBO->upload(redRectVertices, VertexBuffer::Static);
 
-        // Vanish point initially the center of the screen
-        vanishPoint.x = displayWidth * 0.5f;
-        vanishPoint.y = displayHeight * 0.5f;
+		greenRectVBO = new VertexBuffer();
+		greenRectVBO->upload(greenRectVertices, VertexBuffer::Static);
 
-        // center initially at the center of mike
-        mikeCenterPoint.x = 256.0f;
-        mikeCenterPoint.y = 256.0f;
+		blueRectVBO = new VertexBuffer();
+		blueRectVBO->upload(blueRectVertices, VertexBuffer::Static);
 
-        // mike initially at the top left corer of the screen
-        mikePosition.x = 256.0f;
-        mikePosition.y = 256.0f;
+		glDepthFunc(GL_LESS);
+		glDepthMask(GL_TRUE);
+		glDepthRange(0.0, 1.0);
 
-        glDepthFunc(GL_LESS);
-        glDepthMask(GL_TRUE);
+		return true;
+	}
 
-        return true;
-    }
+	virtual void shutdown() override
+	{
+		delete fillProgram;
+		fillProgram = NULL;
 
-    virtual void shutdown() override
-    {
-        delete defaultProgram;
-        defaultProgram = NULL;
+		delete backgroundVBO;
+		backgroundVBO = NULL;
 
-        delete backgroundTex;
-        backgroundTex = NULL;
+		delete redRectVBO;
+		redRectVBO = NULL;
 
-        delete backgroundVBO;
-        backgroundVBO = NULL;
+		delete greenRectVBO;
+		greenRectVBO = NULL;
 
-        delete mikeTex;
-        mikeTex = NULL;
+		delete blueRectVBO;
+		blueRectVBO = NULL;
+	}
 
-        delete mikeVBO;
-        mikeVBO = NULL;
-    }
+	void drawBackground()
+	{
+		glm::mat4 proj = projectionMatrix;
 
-    void drawMike()
-    {
-        // Draw mike
-        // set vanishing point
-        if (!useOrtho) {
-            float vpx = vanishPoint.x;
+		proj[3][2] = 1.0f;
+
+		glm::mat4 mvp = proj;
+
+		fillProgram->setUniform(u_MVP, mvp);
+		backgroundVBO->bind(fillProgram);
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)backgroundVertices.size());
+	}
+
+	void drawRedRect()
+	{
+
+		glm::mat4 proj = projectionMatrix;
+
+		glm::mat4 modelMatrix  = glm::translate(glm::identity<glm::mat4>(), glm::vec3(128.0f, 128.0f, 0.0f));
+
+		proj[3][2] = 0.75f;
+
+		glm::mat4 mvp = proj * modelMatrix;
+
+
+		fillProgram->setUniform(u_MVP, mvp);
+		redRectVBO->bind(fillProgram);
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)redRectVertices.size());
+	}
+
+
+
+	void drawGreenRect()
+	{
+		// set vanishing point
+		if (!useOrtho) {
+			float vpx = vanishPoint.x;
             float vpy = displayHeight - vanishPoint.y;
-            projectionMatrix[2][0] = (2.0f * vpx /  displayWidth) - 1.0f;
-            projectionMatrix[2][1] = (2.0f * vpy / displayHeight) - 1.0f;
-        }
-        defaultProgram->setUniform(u_MVP, projectionMatrix * modelMatrix);
-        mikeVBO->bind(defaultProgram);
-        mikeTex->bind();
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)mikeVertices.size());
-    }
+			projectionMatrix[2][0] = (2.0f * vpx /  displayWidth) - 1.0f;
+			projectionMatrix[2][1] = (2.0f * vpy / displayHeight) - 1.0f;
+		}
 
-    void drawBackground()
-    {
-        // Draw the background
-        defaultProgram->setUniform(u_MVP, projectionMatrix); // No Model transforms for the background.
-        backgroundVBO->bind(defaultProgram);
-        backgroundTex->bind();
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)backgroundVertices.size());
-    }
+		glm::mat4 proj = projectionMatrix;
+
+		glm::mat4 modelMatrix  = glm::translate(glm::identity<glm::mat4>(), glm::vec3(256.0f+64.0f, 128.0f+64.0f, 0.0f));
+		modelMatrix *= glm::yawPitchRoll(glm::radians(0.0f), glm::radians(greenRotation.x), glm::radians(0.0f));
+		modelMatrix  = glm::translate(modelMatrix, glm::vec3(-64.0f, -64.0f, -0.0f));
+
+		proj[3][2] = 0.25f;
+
+		glm::mat4 mvp = proj * modelMatrix;
 
 
-    virtual void render() override
-    {
-        if (useOrtho)
-        {
-            projectionMatrix = glm::ortho(0.0f, (float)displayWidth, (float)displayHeight, 0.0f, -8000.0f, 8000.0f);
-        }
-        else
-        {
-            float fieldOfViewRad = glm::radians(fieldOfView);
-            float cameraDistance = ((float)displayHeight/2.0f) / tan(fieldOfViewRad/2.0f);
-            float aspectRatio = (float)displayWidth / (float)displayHeight;
+		fillProgram->setUniform(u_MVP, mvp);
+		greenRectVBO->bind(fillProgram);
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)greenRectVertices.size());
+	}
 
-            projectionMatrix = glm::perspective(fieldOfViewRad, aspectRatio, 0.1f, cameraDistance+512.0f);
-            projectionMatrix = glm::rotate(projectionMatrix, glm::radians(180.0f), glm::vec3(1, 0, 0));
-            projectionMatrix = glm::translate(projectionMatrix, glm::vec3(-displayWidth*0.5f, -displayHeight*0.5f, cameraDistance));
-        }
+	void drawBlueRect()
+	{
+		glm::mat4 proj = projectionMatrix;
+		glm::mat4 modelMatrix  = glm::translate(glm::identity<glm::mat4>(), glm::vec3(384.0f, 128.0f, -0.75f));
 
-        // Order matters. We use TRSC (Translate, Rotate, Scale, Center)
-        modelMatrix  = glm::translate(glm::identity<glm::mat4>(), mikePosition);
-        modelMatrix *= glm::yawPitchRoll(glm::radians(mikeRotation.y), glm::radians(mikeRotation.x), glm::radians(mikeRotation.z));
-        modelMatrix  = glm::scale(modelMatrix, mikeScale);
-        modelMatrix  = glm::translate(modelMatrix, -mikeCenterPoint);
+		proj[3][2] = 0.00;
 
-        defaultProgram->bind();
-        defaultProgram->setUniform(u_texture0, 0);
+		glm::mat4 mvp = proj * modelMatrix;
 
-        if (useFrontToBack) {
-            glEnable(GL_DEPTH_TEST);
-            projectionMatrix[2][2] = 0.0f;
 
-            projectionMatrix[3][2] = 0.0f;
-            drawMike();
+		fillProgram->setUniform(u_MVP, mvp);
+		blueRectVBO->bind(fillProgram);
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, (GLsizei)blueRectVertices.size());
+	}
 
-            projectionMatrix[3][2] = 0.1f;
-            drawBackground();
-        } else {
-            glDisable(GL_DEPTH_TEST);
-            drawBackground();
-            drawMike();
-        }
-    }
+	virtual void render() override
+	{
+		if (useOrtho)
+		{
+			projectionMatrix = glm::ortho(0.0f, (float)displayWidth, (float)displayHeight, 0.0f, -8000.0f, 8000.0f);
+		}
+		else
+		{
+			float fieldOfViewRad = glm::radians(fieldOfView);
+			float cameraDistance = ((float)displayHeight/2.0f) / tan(fieldOfViewRad/2.0f);
+			float aspectRatio = (float)displayWidth / (float)displayHeight;
 
-    virtual void renderUI() override
-    {
-        char buf[32];
+			projectionMatrix = glm::perspective(fieldOfViewRad, aspectRatio, 0.1f, cameraDistance+512.0f);
+			projectionMatrix = glm::rotate(projectionMatrix, glm::radians(180.0f), glm::vec3(1, 0, 0));
+			projectionMatrix = glm::translate(projectionMatrix, glm::vec3(-displayWidth*0.5f, -displayHeight*0.5f, cameraDistance));
+			projectionMatrix[2][2] = 0.0f;
+		}
 
-        ImGui::NewFrame();
+		fillProgram->bind();
 
-        ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(displayWidth, displayHeight), ImGuiCond_Always);
-        ImGui::Begin("VanishPointGizmo", NULL, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs);
-        ImGui::GetWindowDrawList()->AddLine(ImVec2(vanishPoint.x, vanishPoint.y-16), ImVec2(vanishPoint.x, vanishPoint.y+16), IM_COL32(255, 0, 0, 255), 3.0f);
-        ImGui::GetWindowDrawList()->AddLine(ImVec2(vanishPoint.x-16, vanishPoint.y), ImVec2(vanishPoint.x+16, vanishPoint.y), IM_COL32(255, 0, 0, 255), 3.0f);
-        ImGui::End();
+		if (useFrontToBack) {
+			glEnable(GL_DEPTH_TEST);
+			drawBlueRect();
+			drawGreenRect();
+			drawRedRect();
+			drawBackground();
+		} else {
+			glDisable(GL_DEPTH_TEST);
+			drawBackground();
+			drawRedRect();
+			drawGreenRect();
+			drawBlueRect();
+		}
+	}
 
-        ImGui::Begin("Control Panel");
-        ImGui::Checkbox("Use Orthographic Projection", &useOrtho);
-        ImGui::Checkbox("Front to Back", &useFrontToBack);
-        ImGui::SliderFloat("Field of View", &fieldOfView, 0, 180);
-        ImGui::SliderFloat("Vanish Point X", &vanishPoint.x, 0, displayWidth);
-        ImGui::SliderFloat("Vanish Point Y", &vanishPoint.y, 0, displayHeight);
+	virtual void renderUI() override
+	{
+		char buf[32];
 
-        if (ImGui::TreeNode("Projection Matrix Viewer"))
-        {
-            if (ImGui::BeginTable("Projection", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
-            {
-                for (int row = 0; row < 4; row++)
-                {
-                    ImGui::TableNextRow();
-                    for (int column = 0; column < 4; column++)
-                    {
-                        ImGui::TableSetColumnIndex(column);
-                        snprintf(buf, sizeof(buf), "%f", projectionMatrix[row][column]);
-                        ImGui::TextUnformatted(buf);
-                    }
-                }
-                ImGui::EndTable();
-            }
-            ImGui::TreePop();
-        }
-        if (ImGui::TreeNode("Model Matrix Viewer"))
-        {
-            if (ImGui::BeginTable("Model", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
-            {
-                for (int row = 0; row < 4; row++)
-                {
-                    ImGui::TableNextRow();
-                    for (int column = 0; column < 4; column++)
-                    {
-                        ImGui::TableSetColumnIndex(column);
-                        snprintf(buf, sizeof(buf), "%f", modelMatrix[row][column]);
-                        ImGui::TextUnformatted(buf);
-                    }
-                }
-                ImGui::EndTable();
-            }
-            ImGui::TreePop();
-        }
+		ImGui::NewFrame();
 
-        ImGui::SliderFloat("Translate X", &mikePosition.x, -displayWidth, displayWidth);
-        ImGui::SliderFloat("Translate Y", &mikePosition.y, -displayWidth, displayWidth);
-        ImGui::SliderFloat("Translate Z", &mikePosition.z, -8000.0f, 8000.0f);
-        ImGui::SliderFloat("Rotate X", &mikeRotation.x, 0, 360);
-        ImGui::SliderFloat("Rotate Y", &mikeRotation.y, 0, 360);
-        ImGui::SliderFloat("Rotate Z", &mikeRotation.z, 0, 360);
-        ImGui::SliderFloat("Scale X", &mikeScale.x, -2, 4);
-        ImGui::SliderFloat("Scale Y", &mikeScale.y, -2, 4);
-        ImGui::SliderFloat("Center X", &mikeCenterPoint.x, 0, 512);
-        ImGui::SliderFloat("Center Y", &mikeCenterPoint.y, 0, 512);
-        ImGui::SliderFloat("Center Z", &mikeCenterPoint.z, 0, 512);
+		//		ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+		//		ImGui::SetNextWindowSize(ImVec2(displayWidth, displayHeight), ImGuiCond_Always);
+		//		ImGui::Begin("VanishPointGizmo", NULL, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs);
+		//		ImGui::GetWindowDrawList()->AddLine(ImVec2(vanishPoint.x, vanishPoint.y-16), ImVec2(vanishPoint.x, vanishPoint.y+16), IM_COL32(255, 0, 0, 255), 3.0f);
+		//		ImGui::GetWindowDrawList()->AddLine(ImVec2(vanishPoint.x-16, vanishPoint.y), ImVec2(vanishPoint.x+16, vanishPoint.y), IM_COL32(255, 0, 0, 255), 3.0f);
+		//		ImGui::End();
 
-        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-        ImGui::End();
+		ImGui::Begin("Control Panel");
+		ImGui::Checkbox("Use Orthographic Projection", &useOrtho);
+		ImGui::Checkbox("Front to Back", &useFrontToBack);
+		ImGui::SliderFloat("Field of View", &fieldOfView, 0, 180);
 
-        ImGui::Render();
-    }
+		if (ImGui::TreeNode("Projection Matrix Viewer"))
+		{
+			if (ImGui::BeginTable("Projection", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+			{
+				for (int row = 0; row < 4; row++)
+				{
+					ImGui::TableNextRow();
+					for (int column = 0; column < 4; column++)
+					{
+						ImGui::TableSetColumnIndex(column);
+						snprintf(buf, sizeof(buf), "%f", projectionMatrix[row][column]);
+						ImGui::TextUnformatted(buf);
+					}
+				}
+				ImGui::EndTable();
+			}
+			ImGui::TreePop();
+		}
+		if (ImGui::TreeNode("Model Matrix Viewer"))
+		{
+			if (ImGui::BeginTable("Model", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+			{
+				for (int row = 0; row < 4; row++)
+				{
+					ImGui::TableNextRow();
+					for (int column = 0; column < 4; column++)
+					{
+						ImGui::TableSetColumnIndex(column);
+						snprintf(buf, sizeof(buf), "%f", modelMatrix[row][column]);
+						ImGui::TextUnformatted(buf);
+					}
+				}
+				ImGui::EndTable();
+			}
+			ImGui::TreePop();
+		}
+
+		//		ImGui::SliderFloat("Translate X", &mikePosition.x, -displayWidth, displayWidth);
+		//		ImGui::SliderFloat("Translate Y", &mikePosition.y, -displayWidth, displayWidth);
+		//		ImGui::SliderFloat("Translate Z", &mikePosition.z, -8000.0f, 8000.0f);
+				ImGui::SliderFloat("Rotate X", &greenRotation.x, 0, 360);
+		//		ImGui::SliderFloat("Rotate Y", &mikeRotation.y, 0, 360);
+		//		ImGui::SliderFloat("Rotate Z", &mikeRotation.z, 0, 360);
+		//		ImGui::SliderFloat("Scale X", &mikeScale.x, -2, 4);
+		//		ImGui::SliderFloat("Scale Y", &mikeScale.y, -2, 4);
+		//		ImGui::SliderFloat("Center X", &mikeCenterPoint.x, 0, 512);
+		//		ImGui::SliderFloat("Center Y", &mikeCenterPoint.y, 0, 512);
+		//		ImGui::SliderFloat("Center Z", &mikeCenterPoint.z, 0, 512);
+
+		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		ImGui::End();
+
+		ImGui::Render();
+	}
 
 };
 
 
 int main(int argc, char *argv[])
 {
-    DemoApp app;
-    return app.run("ProjectionTester", 800, 600);
+	DemoApp app;
+	return app.run("ProjectionTester", 800, 480);
 }

@@ -73,9 +73,11 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 copy_asset(
-    default.frag
-    default.vert
-    background.jpg
-    mike.png
+	background.jpg
+	default.frag
+	default.vert
+	fill.frag
+	fill.vert
+	mike.png
 )
 

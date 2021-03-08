@@ -25,7 +25,7 @@ struct DemoApp : public BaseApp
 	VertexBuffer *blueRectVBO = NULL;
 	bool useOrtho = false;
 	bool useFrontToBack = true;
-	float fieldOfView = 55.0f;
+	float fieldOfView = 35.0f;
 	glm::vec3 greenRotation = glm::vec3(45.0f);
 	glm::vec2 vanishPoint = glm::vec2(256.0f+64.0f, 128.0f+64.0f);
 
@@ -193,7 +193,7 @@ struct DemoApp : public BaseApp
 	void drawBlueRect()
 	{
 		glm::mat4 proj = projectionMatrix;
-		glm::mat4 modelMatrix  = glm::translate(glm::identity<glm::mat4>(), glm::vec3(384.0f, 128.0f, -0.75f));
+		glm::mat4 modelMatrix  = glm::translate(glm::identity<glm::mat4>(), glm::vec3(384.0f, 128.0f, 0.0f));
 
 		proj[3][2] = 0.00;
 

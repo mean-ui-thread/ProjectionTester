@@ -4,7 +4,7 @@
 #include <cassert>
 #include <string>
 
-#include <GL/glew.h>
+#include <glad/glad.h>
 
 struct AttributeInfo
 {

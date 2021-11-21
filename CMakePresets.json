@@ -13,6 +13,16 @@
       "hidden": true
     },
     {
+      "name": "emscripten-default",
+      "hidden": true,
+      "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+      "cacheVariables": {
+        "CMAKE_C_ABI_COMPILED": "ON",
+        "CMAKE_CXX_ABI_COMPILED": "ON",
+        "CMAKE_CROSSCOMPILING": "ON"
+      }
+    },
+    {
       "name": "ninja-debug",
       "inherits": [ "ninja-default" ],
       "cacheVariables": {
@@ -28,13 +38,11 @@
     },
     {
       "name": "emscripten-ninja-debug",
-      "inherits": [ "ninja-debug" ],
-      "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+      "inherits": [ "ninja-debug", "emscripten-default" ]
     },
     {
       "name": "emscripten-ninja-release",
-      "inherits": [ "ninja-release" ],
-      "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+      "inherits": [ "ninja-release", "emscripten-default" ]
     }
   ],
   "buildPresets": [

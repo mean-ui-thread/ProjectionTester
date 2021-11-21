@@ -66,10 +66,21 @@ target_include_directories(${PROJECT_NAME}
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL Emscripten)
-    set(common_flags "-s USE_SDL=2 -s USE_SDL_IMAGE=2 -s SDL2_IMAGE_FORMATS='[\"png\",\"jpg\"]' -s WASM=1 -s ALLOW_MEMORY_GROWTH=1 --no-heap-copy")
-
-    target_compile_options(${PROJECT_NAME} PRIVATE ${common_flags})
-    target_link_options(${PROJECT_NAME} PRIVATE ${common_flags} --preload-file \"${${IN_PROJECT_NAME}_BINARY_DIR}/assets\"@./assets)
+    target_compile_options(${PROJECT_NAME} PRIVATE
+        "SHELL:-s USE_SDL=2"
+        "SHELL:-s USE_SDL_IMAGE=2"
+        "SHELL:-s SDL2_IMAGE_FORMATS='[\"png\",\"jpg\"]'"
+        "SHELL:-s WASM=1"
+        "SHELL:-s ALLOW_MEMORY_GROWTH=1"
+        --no-heap-copy
+    )
+    target_link_options(${PROJECT_NAME} PRIVATE 
+        "SHELL:-s USE_SDL=2"
+        "SHELL:-s USE_SDL_IMAGE=2"
+        "SHELL:-s SDL2_IMAGE_FORMATS='[\"png\",\"jpg\"]'"
+        --preload-file ${PROJECT_BINARY_DIR}/assets@./assets
+    )
+    set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX ".html")
 else()
     target_link_libraries(${PROJECT_NAME}
         PRIVATE SDL2::SDL2

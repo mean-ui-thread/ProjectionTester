@@ -54,13 +54,13 @@ struct DemoApp : public BaseApp
 
     virtual bool init() override
     {
-        Shader defaultVert("default.vert");
+        Shader defaultVert("assets/default.vert");
         if (defaultVert.compile() != 0)
         {
             return false;
         }
 
-        Shader defaultFrag("default.frag");
+        Shader defaultFrag("assets/default.frag");
         if (defaultFrag.compile() != 0)
         {
             return false;
@@ -82,7 +82,7 @@ struct DemoApp : public BaseApp
         u_MVP      = defaultProgram->getUniformLocation("u_MVP");
         u_texture0 = defaultProgram->getUniformLocation("u_texture0");
 
-        backgroundTex = new Texture("background.jpg");
+        backgroundTex = new Texture("assets/background.jpg");
         if (backgroundTex->decode() != 0)
         {
             return false;
@@ -91,7 +91,7 @@ struct DemoApp : public BaseApp
         backgroundVBO = new VertexBuffer();
         backgroundVBO->upload(backgroundVertices, VertexBuffer::Static);
 
-        mikeTex = new Texture("mike.png");
+        mikeTex = new Texture("assets/mike.png");
         if (mikeTex->decode() != 0)
         {
             return false;

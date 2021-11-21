@@ -4,7 +4,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <iostream>
-#include <GL/glew.h>
+#include <glad/glad.h>
 
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
@@ -173,12 +173,10 @@ struct BaseApp
             return -1;
         }
 
-        //Initialize GLEW
-        glewExperimental = GL_TRUE;
-        GLenum glewError = glewInit();
-        if( glewError != GLEW_OK )
+        //Initialize GLAD
+        if(!gladLoadGLLoader((GLADloadproc) SDL_GL_GetProcAddress))
         {
-            SDL_LogCritical(0,"Error initializing GLEW! %s", glewGetErrorString(glewError));
+            SDL_LogCritical(0,"Error initializing GLAD!");
 
             SDL_GL_DeleteContext(context);
             context = NULL;
@@ -189,11 +187,11 @@ struct BaseApp
             return -1;
         }
 
-#ifndef NDEBUG
-        // set opengl debug message
-        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-        glDebugMessageCallback(GLDebugMessageCallback, 0);
-#endif
+// #ifndef NDEBUG
+//         // set opengl debug message
+//         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+//         glDebugMessageCallback(GLDebugMessageCallback, 0);
+// #endif
 
         // Setup Dear ImGui context
         IMGUI_CHECKVERSION();

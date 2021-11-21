@@ -9,6 +9,10 @@
 #include "Texture.h"
 #include "VertexBuffer.h"
 
+#if __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 struct DemoVertex {
     glm::vec3 position;
     glm::vec2 texCoord;
@@ -52,7 +56,7 @@ struct DemoApp : public BaseApp
     GLint u_MVP = 0;
     GLint u_texture0 = 0;
 
-    virtual bool init() override
+    virtual bool userInit() override
     {
         Shader defaultVert("assets/default.vert");
         if (defaultVert.compile() != 0)
@@ -118,7 +122,7 @@ struct DemoApp : public BaseApp
         return true;
     }
 
-    virtual void shutdown() override
+    virtual void userShutdown() override
     {
         delete defaultProgram;
         defaultProgram = NULL;
@@ -162,7 +166,7 @@ struct DemoApp : public BaseApp
     }
 
 
-    virtual void render() override
+    virtual void userRender() override
     {
         if (useOrtho)
         {
@@ -204,7 +208,7 @@ struct DemoApp : public BaseApp
         }
     }
 
-    virtual void renderUI() override
+    virtual void userRenderUI() override
     {
         char buf[32];
 
@@ -281,9 +285,23 @@ struct DemoApp : public BaseApp
 
 };
 
+DemoApp app;
+void step() {
+    app.step();
+}
 
 int main(int argc, char *argv[])
 {
-    DemoApp app;
-    return app.run("ProjectionTester", 800, 600);
+    if (app.setup("ProjectionTester", 800, 600) == 0)
+    {
+#ifdef __EMSCRIPTEN__
+        emscripten_set_main_loop(step, 0, 1);
+#else
+        while(app.isRunning)
+        {
+            step();
+        }
+#endif
+        app.teardown();
+    }
 }
